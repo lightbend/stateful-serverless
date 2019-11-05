@@ -102,9 +102,29 @@ lazy val root = (project in file("."))
              docs)
   .settings(common)
 
+lazy val protocols = (project in file("protocols"))
+  .enablePlugins(ProtocPlugin)
+  .settings(
+    common,
+    name := "protocols",
+    libraryDependencies ++= Seq(
+        "com.google.protobuf" % "protobuf-java" % ProtobufVersion % "protobuf"
+      ),
+    PB.protocOptions in Compile := Seq(
+        "--doc_opt=markdown,index.md"
+      ),
+    PB.includePaths in Compile ++= Seq(), // Not used, for now
+    PB.targets in Compile := Seq(
+        PB.gens.plugin("doc") -> (sourceManaged in Compile).value // Requires that this is installed and on PATH: https://github.com/pseudomuto/protoc-gen-doc/releases/tag/v1.3.0
+      ),
+    PB.protoSources in Compile ++= {
+      Seq(baseDirectory.value / "protocol")
+    }
+  )
+
 lazy val docs = (project in file("docs"))
   .enablePlugins(ParadoxPlugin, ProtocPlugin)
-  .dependsOn(`java-support` % Test)
+  .dependsOn(`java-support` % Test, `protocols` % Compile)
   .settings(
     common,
     name := "Cloudstate Documentation",

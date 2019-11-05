@@ -12,14 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gRPC interface for Event Sourced Entity user functions.
-
+//gRPC definitions for Entity Discovery
+//
+//---
+//
+//`Interaction Specification`:
+//
+// - CloudState Proxy
+//   - initiates a gRPC connection to the configured `user-function` hostname and port.
+//     - TODO describe connection expectations (failure modes and interpretations thereof)
+//   - invokes the User Function's `cloudstate.EntityDiscovery.discover` endpoint via the gRPC connection
+//     - User Function's `cloudstate.EntityDiscovery.discover` implementation
+//       - inspects the passed `ProxyInfo`
+//       - TODO
+//       - replies with a *valid* `EntitySpec`
+//   - TODO
+//  - TODO
 syntax = "proto3";
 
 package cloudstate;
 
-// Any is used so that domain events defined according to the functions business domain can be embedded inside
-// the protocol.
+// Any is used so that domain events defined according to the functions business domain can be embedded inside the protocol.
 import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/descriptor.proto";
@@ -27,30 +40,56 @@ import "google/protobuf/descriptor.proto";
 option java_package = "io.cloudstate.protocol";
 option go_package = "cloudstate/protocol";
 
-// A reply to the sender.
+//*Reply* represents a Command processing successful reply.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `Reply` is considered to be valid iff:
+//    - `payload` TODO FIXME rename to `response`?
 message Reply {
-    // The reply payload
+    // The reply payload.
     google.protobuf.Any payload = 1;
 }
 
-// Forwards handling of this request to another entity.
+//*Forwards* handling of this request to another entity.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `Forward` is considered to be valid iff:
+//    - `service_name` TODO
+//    - `command_name` TODO
+//    - `payload` TODO FIXME rename to `parameter_value`?
 message Forward {
     // The name of the service to forward to.
     string service_name = 1;
     // The name of the command.
     string command_name = 2;
-    // The payload.
+    // The payload is the parameter value to the command.
     google.protobuf.Any payload = 3;
 }
 
-// An action for the client
+//*ClientAction* represents a side effect to be done after this command is handled.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `ClientAction` is considered to be valid iff:
+//    - `action` MUST be one of the following:
+//      - `reply` MUST be a valid Reply containing a `payload` of the expected type.
+//      - `forward` MUST be a valid Forward to a service whose command produces a ClientAction of the expected type.
+//      - `failure` MUST be a valid Failure.
 message ClientAction {
     oneof action {
 
-        // Send a reply
+        // Send a reply.
         Reply reply = 1;
 
-        // Forward to another entity
+        // Forward to another entity.
         Forward forward = 2;
 
         // Send a failure to the client
@@ -58,7 +97,17 @@ message ClientAction {
     }
 }
 
-// A side effect to be done after this command is handled.
+//*SideEffect* represents a side effect to be done after this command is handled.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `SideEffect` is considered to be valid iff:
+//    - `service_name` TODO
+//    - `command_name` TODO
+//    - `payload` TODO FIXME rename to `parameter_value`?
+//    - `synchronous` TODO
 message SideEffect {
 
     // The name of the service to perform the side effect on.
@@ -70,12 +119,22 @@ message SideEffect {
     // The payload of the command.
     google.protobuf.Any payload = 3;
 
-    // Whether this side effect should be performed synchronously, ie, before the reply is eventually
-    // sent, or not.
+    // Whether this side effect should be performed synchronously, ie, before the reply is eventually sent, or not.
     bool synchronous = 4;
 }
 
-// A command. For each command received, a reply must be sent with a matching command id.
+//*Command* represents TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `Command` is considered to be valid iff:
+//    - `entity_id` TODO
+//    - `id` TODO FIXME rename to `command_id`?
+//    - `name` TODO
+//    - `payload` TODO FIXME rename to `parameter_value`?
+//    - `streamed` TODO
 message Command {
 
     // The ID of the entity.
@@ -84,27 +143,44 @@ message Command {
     // A command id.
     int64 id = 2;
 
-    // Command name
+    // Command name.
     string name = 3;
 
     // The command payload.
     google.protobuf.Any payload = 4;
 
-    // Whether the command is streamed or not
+    // Whether the command is streamed or not.
     bool streamed = 5;
 }
 
+//*StreamCancelled* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `StreamCancelled` is considered to be valid iff:
+//    - `entity_id` TODO
+//    - `id` TODO FIXME rename to `command_id`?
 message StreamCancelled {
 
-    // The ID of the entity
+    // The ID of the entity.
     string entity_id = 1;
 
-    // The command id
+    // The command id.
     int64 id = 2;
 }
 
-// A failure reply. If this is returned, it will be translated into a gRPC unknown
-// error with the corresponding description if supplied.
+//*Failure* represents a Command processing failure reply.
+//If this is returned, it will be translated into a gRPC unknown error with the corresponding description if supplied.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `Failure` is considered to be valid iff:
+//    - `command_id` TODO
+//    - `description` TODO
 message Failure {
 
     // The id of the command being replied to. Must match the input command.
@@ -114,12 +190,18 @@ message Failure {
     string description = 2;
 }
 
+//*EntitySpec* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `EntitySpec` is considered to be valid iff:
+//    - `proto` MUST be valid binary proto of a Descriptors.FileDescriptorSet with atleast one Service definition.
+//    - `entities` MUST each be a valid `Entity` with a `service_name` corresponding to the name of a distinct Service contained in `proto`.
+//    - `service_info` MUST be a valid ServiceInfo
 message EntitySpec {
-    // This should be the Descriptors.FileDescriptorSet in proto serialized from as generated by:
-    // protoc --include_imports \
-    // --proto_path=<proto file directory> \
-    // --descriptor_set_out=user-function.desc \
-    // <path to .proto files>
+    // A Protobuf Descriptors.FileDescriptorSet of the Service to be proxied in proto serialized form.
     bytes proto = 1;
 
     // The entities being served.
@@ -129,8 +211,19 @@ message EntitySpec {
     ServiceInfo service_info = 3;
 }
 
-// Information about the service that proxy is proxying to.
-// All of the information in here is optional. It may be useful for debug purposes.
+//*ServiceInfo* contains information about the service that the CloudState Proxy will proxy.
+//All of the information in here is optional, it is intended to be used for debug purposes.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `ServiceInfo` is considered to be valid iff:
+//    - `service_name` TODO
+//    - `service_version` TODO
+//    - `service_runtime` TODO
+//    - `support_library_name` TODO
+//    - `support_library_version` TODO
 message ServiceInfo {
 
     // The name of the service, eg, "shopping-cart".
@@ -144,13 +237,26 @@ message ServiceInfo {
     // - OpenJDK Runtime Environment 1.8.0_192-b12
     string service_runtime = 3;
 
-    // If using a support library, the name of that library, eg "cloudstate"
+    // If using a support library, the name of that library, eg "java-support".
     string support_library_name = 4;
 
     // The version of the support library being used.
     string support_library_version = 5;
 }
 
+//*Entity* represents TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `Entity` is considered to be valid iff:
+//    - `entity_type` is one of the following values:
+//      - TODO
+//      - TODO
+//      - TODO
+//    - `service_name` MUST be the name of a gRPC Service
+//    - `persistence_id` MUST be TODO
 message Entity {
 
     // The type of entity. By convention, this should be a fully qualified entity protocol grpc
@@ -165,27 +271,69 @@ message Entity {
     string persistence_id = 3;
 }
 
+//*UserFunctionError* contains information about a problem pretaining to erronous behavior of a UserFunction.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `UserFunctionError` is considered to be valid iff:
+//    - `message` MUST have length >= 1
 message UserFunctionError {
+    // A human-readable error message.
     string message = 1;
 }
 
+//*ProxyInfo* contains information about the CloudState PRoxy which is responsible for proxying a UserFunction.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `ProxyInfo` is considered to be *valid* iff:
+//    - `protocol_major_version` >= 0
+//    - `protocol_minor_version` >= 0
+//    - `proxy_name` TODO
+//    - `proxy_version` TODO
+//    - `supported_entity_types` is one of the following values:
+//      - TODO
+//      - TODO
+//      - TODO
 message ProxyInfo {
+    // TODO
     int32 protocol_major_version = 1;
+    // TODO
     int32 protocol_minor_version = 2;
+    // TODO
     string proxy_name = 3;
+    // TODO
     string proxy_version = 4;
+    // TODO
     repeated string supported_entity_types = 5;
 }
 
-// Entity discovery service.
+//The *EntityDiscovery* Service is the entrypoint for CloudState Proxies.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `User Function` *MUST* implement EntityDiscovery
+//  - `discover`
+//    - *MUST* be invoked with a *valid* `ProxyInfo`
+//    - *MUST* return a *valid* `EntitySpec`
+//    - *MUST* be *idempotent*
+//    - *MAY* be called any number of times by its CloudState Proxy
+//    - *MUST* yield a failure if the provided `ProxyInfo` is not deemed compatible with the User Function
+//  - `reportError`
+//    - *MUST* only receive failures not originating from invoking `reportError`, since that would cause a crash-loop.
+//    - *SHOULD* be used for informational purposes only—the message MUST be reported to the developer in a way which is visible without debug logging turned on, such as STDOUT, but it may go somewhere else depending on the language used. Fatal errors will lead to the proxy closing the connection, as always.
+//
 service EntityDiscovery {
 
-    // Discover what entities the user function wishes to serve.
+    // Lets a CloudState Proxy discover which `service` and `entities` a User Function implements.
     rpc discover(ProxyInfo) returns (EntitySpec) {}
 
-    // Report an error back to the user function. This will only be invoked to tell the user function
-    // that it has done something wrong, eg, violated the protocol, tried to use an entity type that
-    // isn't supported, or attempted to forward to an entity that doesn't exist, etc. These messages
-    // should be logged clearly for debugging purposes.
+    // Lets a CloudState Proxy inform a User Function about specification violations.
     rpc reportError(UserFunctionError) returns (google.protobuf.Empty) {}
 }

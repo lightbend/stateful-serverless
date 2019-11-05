@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gRPC interface for Event Sourced Entity user functions.
-
+// gRPC definitions for Stateless user functions.
+//
+//---
+//
+//`Interaction Specification`:
+//
+//  - TODO
 syntax = "proto3";
 
 package cloudstate.function;
@@ -26,35 +31,76 @@ import "cloudstate/entity.proto";
 option java_package = "io.cloudstate.protocol";
 option go_package = "cloudstate/protocol";
 
+//*FunctionCommand* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `FunctionCommand` is considered to be valid iff:
+//    - `service_name` TODO
+//    - `name` TODO FIXME rename to `command_name`?
+//    - `payload` TODO
 message FunctionCommand {
     // The name of the service this function is on.
+    // @exclude FIXME Why no ordinal 1?
     string service_name = 2;
 
-    // Command name
+    // Command name.
     string name = 3;
 
     // The command payload.
     google.protobuf.Any payload = 4;
 }
 
+//*FunctionReply* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `FunctionReply` is considered to be valid iff:
+//    - `response` MUST be one of the following:
+//      - `reply` TODO
+//      - `forward` TODO
+//    - `side_effects` TODO
 message FunctionReply {
 
     oneof response {
+        // @exclude FIXME add Failure? Why no ordinal 1?
         Reply reply = 2;
         Forward forward = 3;
     }
-
+    // TODO
     repeated SideEffect side_effects = 4;
 }
 
+//The *StatelessFunction* Service is the entrypoint for stateless User Functions.
+//
+//---
+//
+//`Specification`:
+//
+//  - An implementation of `StatelessFunction` is only valid iff:
+//  - `handleUnary`
+//    - TODO
+//  - `handleStreamedIn`
+//    - TODO
+//  - `handleStreamedOut`
+//    - TODO
+//  - `handleStreamed`
+//    - TODO
 service StatelessFunction {
 
+    // TODO
     rpc handleUnary(FunctionCommand) returns (FunctionReply) {}
 
+    // TODO
     rpc handleStreamedIn(stream FunctionCommand) returns (FunctionReply) {}
 
+    // TODO
     rpc handleStreamedOut(FunctionCommand) returns (stream FunctionReply) {}
 
+    // TODO
     rpc handleStreamed(stream FunctionCommand) returns (stream FunctionReply) {}
-
 }

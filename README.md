@@ -10,7 +10,7 @@ The Serverless movement today is very focused on the automation of the underlyin
 
 Stateless functions is a great tool that has its place in the cloud computing toolkit, but for Serverless to reach the grand vision that the industry is demanding of a Serverless world while allowing us to build modern data-centric real-time applications, we can't continue to ignore the hardest problem in distributed systems: managing state—your data. 
 
-The [Cloudstate](https://cloudstate.io) project takes on this challenge and paves the way for Serverless 2.0. It consists of two things: 
+The [Cloudstate](https://cloudstate.io) project takes on this challenge and paves the way for Serverless 2.0. It consists of two things:
 
 1. **A standards effort** — defining a specification, protocol between the user functions and the backend, and a TCK.
 2. **A reference implementation** — implementing the backend and a set of client API libraries in different languages.
@@ -99,7 +99,7 @@ End-to-end correctness, consistency, and safety mean different things for differ
 
 [Cloudstate](https://cloudstate.io) is a standards effort defining a specification, protocol, and reference implementation, aiming to extend the promise of Serverless and its Developer Experience to general-purpose application development. 
 
-Cloudstate builds on and extends the traditional stateless FaaS model, by adding support for long-lived addressable stateful services and a way of accessing mapped well-formed data via [gRPC](https://grpc.io/), while allowing for a range of different consistency model—from strong to eventual consistency—based on the nature of the data and how it should be processed, managed, and stored. 
+Cloudstate builds on and extends the traditional stateless FaaS model, by adding support for long-lived addressable stateful services and a way of accessing mapped well-formed data via [gRPC](https://grpc.io/), while allowing for a range of different consistency model—from strong to eventual consistency—based on the nature of the data and how it should be processed, managed, and stored.
 
 You define your data model, choose its consistency mode and resolution method, and access both your data, data-centric operations, streaming pipelines, and events via a well-formed protocol of gRPC command and read channels.
 
@@ -180,7 +180,7 @@ As Adzic et al. write in their paper ['Serverless computing: economic and archit
 
 However, implementing traditional application development, microservices, stateful data pipelines, and general-purpose distributed system problems using stateless functions (FaaS) is very hard to do in a low-latency, performant, reliable way. 
 
-Cloudstate is designed to extend the model and make it straightforward to implement use-cases such as: 
+Cloudstate is designed to extend the model and make it straightforward to implement use-cases such as:
 
 *   **Training and Serving of Machine Learning Models**
     *   Any use-case that needs to build up, and provide low latency serving of, dynamic models 

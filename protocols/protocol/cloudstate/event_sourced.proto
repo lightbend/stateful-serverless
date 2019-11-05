@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gRPC interface for Event Sourced Entity user functions.
-
+// gRPC definitions for Event Sourced Entity user functions.
+//
+//---
+//
+//`Interaction Specification`:
+//
+//  - TODO
 syntax = "proto3";
 
 package cloudstate.eventsourced;
@@ -26,8 +31,18 @@ import "cloudstate/entity.proto";
 option java_package = "io.cloudstate.protocol";
 option go_package = "cloudstate/protocol";
 
-// The init message. This will always be the first message sent to the entity when
-// it is loaded.
+//*EventSourcedInit* TODO
+//
+//The init message. This will always be the first message sent to the entity when it is loaded.
+//
+//---
+//
+//`Specification`:
+//
+//  - An `EventSourcedInit` is considered to be valid iff:
+//    - `service_name` TODO
+//    - `entity_id` TODO
+//    - `snapshot` TODO
 message EventSourcedInit {
 
     string service_name = 1;
@@ -39,7 +54,15 @@ message EventSourcedInit {
     EventSourcedSnapshot snapshot = 3;
 }
 
-// A snapshot
+//*EventSourcedSnapshot* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `EventSourcedSnapshot` is considered to be valid iff:
+//    - `sequence` TODO
+//    - `snapshot` TODO
 message EventSourcedSnapshot {
 
     // The sequence number when the snapshot was taken.
@@ -49,7 +72,15 @@ message EventSourcedSnapshot {
     google.protobuf.Any snapshot = 2;
 }
 
-// An event. These will be sent to the entity when the entity starts up.
+//*EventSourcedEvent* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `EventSourcedEvent` is considered to be valid iff:
+//    - `sequence` TODO FIXME rename to sequence_number?
+//    - `payload` TODO
 message EventSourcedEvent {
 
     // The sequence number of the event.
@@ -59,16 +90,27 @@ message EventSourcedEvent {
     google.protobuf.Any payload = 2;
 }
 
-// A reply to a command.
+//*EventSourcedReply* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `EventSourcedReply` is considered to be valid iff:
+//    - `command_id` TODO
+//    - `client_action` TODO
+//    - `side_effects` TODO
+//    - `events` TODO
+//    - `snapshot` TODO
 message EventSourcedReply {
 
     // The id of the command being replied to. Must match the input command.
     int64 command_id = 1;
 
-    // The action to take
+    // The action to take.
     ClientAction client_action = 2;
 
-    // Any side effects to perform
+    // Any side effects to perform.
     repeated SideEffect side_effects = 3;
 
     // A list of events to persist - these will be persisted before the reply
@@ -81,35 +123,70 @@ message EventSourcedReply {
     google.protobuf.Any snapshot = 5;
 }
 
-// Input message type for the gRPC stream in.
+//*EventSourcedStreamIn* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `EventSourcedStreamIn` is considered to be valid iff:
+//    - `message` MUST be one of the following:
+//      - `init` TODO
+//      - `event` TODO
+//      - `command` TODO
 message EventSourcedStreamIn {
+
     oneof message {
+        // TODO
         EventSourcedInit init = 1;
+        // TODO
         EventSourcedEvent event = 2;
+        // TODO
         Command command = 3;
     }
 }
 
-// Output message type for the gRPC stream out.
+//*EventSourcedStreamOut* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `EventSourcedStreamOut` is considered to be valid iff:
+//    - `message` MUST be one of the following:
+//      - `reply` TODO
+//      - `failure` TODO
 message EventSourcedStreamOut {
+
     oneof message {
+        // TODO
         EventSourcedReply reply = 1;
+        // TODO
         Failure failure = 2;
     }
 }
 
-// The Entity service
+//The *EventSourced* Service is the entrypoint for event sourced User Function entities.
+//
+// TODO: One stream will be established per active entity.
+// Once established, the first message sent will be Init, which contains the entity ID, and,
+// if the entity has previously persisted a snapshot, it will contain that snapshot. It will
+// then send zero to many event messages, one for each event previously persisted. The entity
+// is expected to apply these to its state in a deterministic fashion. Once all the events
+// are sent, one to many commands are sent, with new commands being sent as new requests for
+// the entity come in. The entity is expected to reply to each command with exactly one reply
+// message. The entity should reply in order, and any events that the entity requests to be
+// persisted the entity should handle itself, applying them to its own state, as if they had
+// arrived as events when the event stream was being replayed on load.
+//
+//---
+//
+//`Specification`:
+//
+//  - An implementation of `EventSourced` is only valid iff:
+//  - `handle`
+//    - TODO
 service EventSourced {
-
-    // The stream. One stream will be established per active entity.
-    // Once established, the first message sent will be Init, which contains the entity ID, and,
-    // if the entity has previously persisted a snapshot, it will contain that snapshot. It will
-    // then send zero to many event messages, one for each event previously persisted. The entity
-    // is expected to apply these to its state in a deterministic fashion. Once all the events
-    // are sent, one to many commands are sent, with new commands being sent as new requests for
-    // the entity come in. The entity is expected to reply to each command with exactly one reply
-    // message. The entity should reply in order, and any events that the entity requests to be
-    // persisted the entity should handle itself, applying them to its own state, as if they had
-    // arrived as events when the event stream was being replayed on load.
+    // TODO
     rpc handle(stream EventSourcedStreamIn) returns (stream EventSourcedStreamOut) {}
 }

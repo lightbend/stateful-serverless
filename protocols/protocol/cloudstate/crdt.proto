@@ -12,22 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gRPC interface for Event Sourced Entity user functions.
-
+// gRPC definitions for Crdt Entity user functions.
+//
+//---
+//
+//`Interaction Specification`:
+//
+//  - TODO
 syntax = "proto3";
 
 package cloudstate.crdt;
 
-// Any is used so that domain events defined according to the functions business domain can be embedded inside
-// the protocol.
+// Any is used so that domain events defined according to the functions business domain can be embedded inside the protocol.
 import "google/protobuf/any.proto";
 import "cloudstate/entity.proto";
 
 option java_package = "io.cloudstate.protocol";
 option go_package = "cloudstate/protocol";
 
-// CRDT Protocol
+//The *Crdt* Service is the entrypoint for CRDT-based User Function entities.
 //
+// TODO:
 // Note that while this protocol provides support for CRDTs, the data types sent across the protocol are not CRDTs
 // themselves. It is the responsibility of the CloudState proxy to implement the CRDTs, merge functions, vector clocks
 // etc, not the user function. The user function need only hold the current value in memory, and this protocol sends
@@ -51,20 +56,41 @@ option go_package = "cloudstate/protocol";
 // Special care must be taken when working with maps and sets. The keys/values are google.protobuf.Any, which encodes
 // the value as binary protobuf, however, serialized protobufs are not stable, two semantically equal objects could
 // encode to different bytes. It is the responsibility of the user function to ensure that stable encodings are used.
+//
+//---
+//
+//`Specification`:
+//
+//  - An implementation of `Crdt` is only valid iff:
+//  - `handle`
+//    - TODO: After invoking handle, the first message sent will always be a CrdtInit message, containing the entity ID, and,
+//      if it exists or is available, the current state of the entity. After that, one or more commands may be sent,
+//      as well as deltas as they arrive, and the entire state if either the entity is created, or the proxy wishes the
+//      user function to replace its entire state.
+//    - TODO: The user function must respond with one reply per command in. They do not necessarily have to be sent in the same
+//      order that the commands were sent, the command ID is used to correlate commands to replies.
+//    - TODO
 service Crdt {
-
-    // After invoking handle, the first message sent will always be a CrdtInit message, containing the entity ID, and,
-    // if it exists or is available, the current state of the entity. After that, one or more commands may be sent,
-    // as well as deltas as they arrive, and the entire state if either the entity is created, or the proxy wishes the
-    // user function to replace its entire state.
-    //
-    // The user function must respond with one reply per command in. They do not necessarily have to be sent in the same
-    // order that the commands were sent, the command ID is used to correlate commands to replies.
+    // TODO
     rpc handle(stream CrdtStreamIn) returns (stream CrdtStreamOut);
 }
 
-// Message for the Crdt handle stream in.
+//*CrdtStreamIn* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtStreamIn` is considered to be valid iff:
+//    - `message` MUST be one of the following:
+//      - `init` TODO
+//      - `state` TODO
+//      - `changed` TODO
+//      - `deleted` TODO
+//      - `command` TODO
+//      - `stream_cancelled` TODO
 message CrdtStreamIn {
+
     oneof message {
 
         // Always sent first, and only once.
@@ -92,8 +118,20 @@ message CrdtStreamIn {
     }
 }
 
-// Message for the Crdt handle stream out.
+//*CrdtStreamOut* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtStreamOut` is considered to be valid iff:
+//    - `message` MUST be one of the following:
+//      - `reply` TODO
+//      - `streamed_message` TODO
+//      - `stream_cancelled_response` TODO
+//      - `failure` TODO
 message CrdtStreamOut {
+
     oneof message {
         // A reply to an incoming command. Either one reply, or one failure, must be sent in response to each command.
         CrdtReply reply = 1;
@@ -106,79 +144,144 @@ message CrdtStreamOut {
     }
 }
 
+//*CrdtState* TODO
+//
 // The CRDT state. This represents the full state of a CRDT. When received, a user function should replace the current
 // state with this, not apply it as a delta. This includes both for the top level CRDT, and embedded CRDTs, such as
 // the values of an ORMap.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtState` is considered to be valid iff:
+//    - `state` MUST be one of the following:
+//      - `gcounter` TODO
+//      - `pncounter` TODO
+//      - `gset` TODO
+//      - `orset` TODO
+//      - `lwwregister` TODO
+//      - `flag` TODO
+//      - `ormap` TODO
+//      - `vote` TODO
 message CrdtState {
+
     oneof state {
-        // A Grow-only Counter
+        // A Grow-only Counter.
         GCounterState gcounter = 1;
 
-        // A Positve-Negative Counter
+        // A Positve-Negative Counter.
         PNCounterState pncounter = 2;
 
-        // A Grow-only Set
+        // A Grow-only Set.
         GSetState gset = 3;
 
-        // An Observed-Removed Set
+        // An Observed-Removed Set.
         ORSetState orset = 4;
 
-        // A Last-Write-Wins Register
+        // A Last-Write-Wins Register.
         LWWRegisterState lwwregister = 5;
 
-        // A Flag
+        // A Flag.
         FlagState flag = 6;
 
-        // An Observed-Removed Map
+        // An Observed-Removed Map.
         ORMapState ormap = 7;
 
-        // A vote
+        // A vote.
         VoteState vote = 8;
     }
 }
 
+//*GCounterState* TODO
+//
 // A Grow-only counter
 //
 // A G-Counter can only be incremented, it can't be decremented.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `GCounterState` is considered to be valid iff:
+//    - `value` TODO
 message GCounterState {
 
     // The current value of the counter.
     uint64 value = 1;
 }
 
+//*PNCounterState* TODO
+//
 // A Positve-Negative Counter
 //
 // A PN-Counter can be both incremented and decremented.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `PNCounterState` is considered to be valid iff:
+//    - `value` TODO
 message PNCounterState {
 
     // The current value of the counter.
     int64 value = 1;
 }
 
+//*GSetState* TODO
+//
 // A Grow-only Set
 //
 // A G-Set can only have items added, items cannot be removed.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `GSetState` is considered to be valid iff:
+//    - `items` TODO
 message GSetState {
 
     // The current items in the set.
     repeated google.protobuf.Any items = 1;
 }
 
+//*ORSetState* TODO
+//
 // An Observed-Removed Set
 //
 // An OR-Set may have items added and removed, with the condition that an item must be observed to be in the set before
 // it is removed.
+//
+//---
+//
+//`Specification`:
+//
+//  - An `ORSetState` is considered to be valid iff:
+//    - `items` TODO
 message ORSetState {
 
     // The current items in the set.
     repeated google.protobuf.Any items = 1;
 }
 
+//*LWWRegisterState* TODO
+//
 // A Last-Write-Wins Register
 //
 // A LWW-Register holds a single value, with the current value being selected based on when it was last written.
 // The time of the last write may either be determined using the proxies clock, or may be based on a custom, domain
 // specific value.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `LWWRegisterState` is considered to be valid iff:
+//    - `value` TODO
+//    - `clock` TODO
+//    - `custom_clock_value` TODO
 message LWWRegisterState {
 
     // The current value of the register.
@@ -191,27 +294,51 @@ message LWWRegisterState {
     int64 custom_clock_value = 3;
 }
 
-// A Flag
+//*FlagState* TODO
 //
 // A Flag is a boolean value, that once set to true, stays true.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `FlagState` is considered to be valid iff:
+//    - `value` TODO
 message FlagState {
 
     // The current value of the flag.
     bool value = 1;
 }
 
+//*ORMapState* TODO
+//
 // An Observed-Removed Map
 //
 // Like an OR-Set, an OR-Map may have items added and removed, with the condition that an item must be observed to be
 // in the map before it is removed. The values of the map are CRDTs themselves. Different keys are allowed to use
 // different CRDTs, and if an item is removed, and then replaced, the new value may be a different CRDT.
+//
+//---
+//
+//`Specification`:
+//
+//  - An `ORMapState` is considered to be valid iff:
+//    - `entries` TODO
 message ORMapState {
 
     // The entries of the map.
     repeated ORMapEntry entries = 1;
 }
 
-// An OR-Map entry.
+//*ORMapEntry* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `ORMapEntry` is considered to be valid iff:
+//    - `key` TODO
+//    - `value` TODO
 message ORMapEntry {
 
     // The entry key.
@@ -221,104 +348,263 @@ message ORMapEntry {
     CrdtState value = 2;
 }
 
+//*VoteState* TODO
+//
 // A Vote. This allows nodes to vote on something.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `VoteState` is considered to be valid iff:
+//    - `votes_for` TODO
+//    - `total_voters` TODO
+//    - `self_vote` TODO
 message VoteState {
 
-    // The number of votes for
+    // The number of votes for.
     uint32 votes_for = 1;
 
-    // The total number of voters
+    // The total number of voters.
     uint32 total_voters = 2;
 
-    // The vote of the current node, which is included in the above two numbers
+    // The vote of the current node, which is included in the above two numbers.
     bool self_vote = 3;
 }
 
-// A CRDT delta
+//*CrdtDelta* TODO
 //
-// Deltas only carry the change in value, not the full value (unless
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtDelta` is considered to be valid iff:
+//    - `delta` MUST be one of the following:
+//      - `gcounter` TODO
+//      - `pncounter` TODO
+//      - `gset` TODO
+//      - `orset` TODO
+//      - `lwwregister` TODO
+//      - `flag` TODO
+//      - `ormap` TODO
+//      - `vote` TODO
 message CrdtDelta {
+
     oneof delta {
+        // TODO
         GCounterDelta gcounter = 1;
+        // TODO
         PNCounterDelta pncounter = 2;
+        // TODO
         GSetDelta gset = 3;
+        // TODO
         ORSetDelta orset = 4;
+        // TODO
         LWWRegisterDelta lwwregister = 5;
+        // TODO
         FlagDelta flag = 6;
+        // TODO
         ORMapDelta ormap = 7;
+        // TODO
         VoteDelta vote = 8;
     }
 }
 
+//*GCounterDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `GCounterDelta` is considered to be valid iff:
+//    - `increment` TODO
 message GCounterDelta {
     uint64 increment = 1;
 }
 
+//*PNCounterDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `PNCounterDelta` is considered to be valid iff:
+//    - `change` TODO
 message PNCounterDelta {
     sint64 change = 1;
 }
 
+//*GSetDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `GSetDelta` is considered to be valid iff:
+//    - `added` TODO
 message GSetDelta {
     repeated google.protobuf.Any added = 1;
 }
 
+//*ORSetDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `ORSetDelta` is considered to be valid iff:
+//    - `cleared` TODO
+//    - `removed` TODO
+//    - `added` TODO
 message ORSetDelta {
     // If cleared is set, the set must be cleared before added is processed.
     bool cleared = 1;
+    // TODO
     repeated google.protobuf.Any removed = 2;
+    // TODO
     repeated google.protobuf.Any added = 3;
 }
 
+//*LWWRegisterDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `LWWRegisterDelta` is considered to be valid iff:
+//    - `value` TODO
+//    - `clock` TODO
+//    - `custom_clock_value` TODO
 message LWWRegisterDelta {
+    // TODO
     google.protobuf.Any value = 1;
+    // TODO
     CrdtClock clock = 2;
+    // TODO
     int64 custom_clock_value = 3;
 }
 
+//*FlagDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `FlagDelta` is considered to be valid iff:
+//    - `value` TODO
 message FlagDelta {
+    // TODO
     bool value = 1;
 }
 
+//*ORMapDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `ORMapDelta` is considered to be valid iff:
+//    - `cleared` TODO
+//    - `removed` TODO
+//    - `updated` TODO
+//    - `added` TODO
 message ORMapDelta {
+    // TODO
     bool cleared = 1;
+    // TODO
     repeated google.protobuf.Any removed = 2;
+    // TODO
     repeated ORMapEntryDelta updated = 3;
+    // TODO
     repeated ORMapEntry added = 4;
 }
 
+//*ORMapEntryDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - An `ORMapEntryDelta` is considered to be valid iff:
+//    - `key` TODO
+//    - `delta` TODO
 message ORMapEntryDelta {
     // The entry key.
     google.protobuf.Any key = 1;
-
+    // TODO
     CrdtDelta delta = 2;
 }
 
+//*VoteDelta* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `VoteDelta` is considered to be valid iff:
+//    - `self_vote` TODO
+//    - `votes_for` TODO
+//    - `total_voters` TODO
 message VoteDelta {
     // Only set by the user function to change the nodes current vote.
     bool self_vote = 1;
-
     // Only set by the proxy to change the votes for and total voters.
     int32 votes_for = 2;
+    // TODO
     int32 total_voters = 3;
 }
 
+//*CrdtInit* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtInit` is considered to be valid iff:
+//    - `service_name` TODO
+//    - `entity_id` TODO
+//    - `state` TODO
 message CrdtInit {
+    // TODO
     string service_name = 1;
+    // TODO
     string entity_id = 2;
+    // TODO
     CrdtState state = 3;
 }
 
+//*CrdtDelete* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtDelete` is considered to be valid iff:
+//    - TODO
 message CrdtDelete {
 }
 
+
+//*CrdtReply* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtReply` is considered to be valid iff:
+//    - `command_id` TODO
+//    - `client_action` TODO
+//    - `side_effects` TODO
+//    - `state_action` TODO
+//    - `streamed` TODO
 message CrdtReply {
-
+    // TODO
     int64 command_id = 1;
-
+    // TODO
     ClientAction client_action = 2;
-
+    // TODO
     repeated SideEffect side_effects = 4;
-
+    // TODO
     CrdtStateAction state_action = 5;
 
     // If the request was streamed, setting this to true indicates that the command should
@@ -328,43 +614,89 @@ message CrdtReply {
     bool streamed = 6;
 }
 
+//*CrdtStateAction* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtStateAction` is considered to be valid iff:
+//    - `action` MUST be one of the following:
+//      - `create` TODO
+//      - `update` TODO
+//      - `delete` TODO
+//    - `write_consistency` TODO
+//
+// FIXME set the ordinals to start at 1?
 message CrdtStateAction {
+
     oneof action {
+        // TODO
         CrdtState create = 5;
+        // TODO
         CrdtDelta update = 6;
+        // TODO
         CrdtDelete delete = 7;
     }
 
     CrdtWriteConsistency write_consistency = 8;
 }
 
-// May be sent as often as liked if the first reply set streamed to true
+//*CrdtStreamedMessage* TODO
+//
+// May be sent as often as liked if the first reply set streamed to true.
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtStreamedMessage` is considered to be valid iff:
+//    - `command_id` TODO
+//    - `client_action` TODO
+//    - `side_effects` TODO
+//    - `end_stream` TODO
 message CrdtStreamedMessage {
-
+    // TODO
     int64 command_id = 1;
-
+    // TODO
     ClientAction client_action = 2;
-
+    // TODO
     repeated SideEffect side_effects = 3;
 
     // Indicates the stream should end, no messages may be sent for this command after this.
     bool end_stream = 4;
 }
 
+//*CrdtStreamCancelledResponse* TODO
+//
+//---
+//
+//`Specification`:
+//
+//  - A `CrdtStreamCancelledResponse` is considered to be valid iff:
+//    - `command_id` TODO
+//    - `side_effects` TODO
+//    - `state_action` TODO
 message CrdtStreamCancelledResponse {
+    // TODO
     int64 command_id = 1;
-
+    // TODO
     repeated SideEffect side_effects = 2;
-
+    // TODO
     CrdtStateAction state_action = 3;
 }
 
+//*CrdtWriteConsistency* TODO
 enum CrdtWriteConsistency {
+    // TODO
     LOCAL = 0;
+    // TODO
     MAJORITY = 1;
+    // TODO
     ALL = 2;
 }
 
+//*CrdtClock* TODO
 enum CrdtClock {
     // Use the default clock for deciding the last write, which is the system clocks
     // milliseconds since epoch.
