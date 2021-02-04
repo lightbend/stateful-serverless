@@ -24,12 +24,13 @@ import com.google.protobuf.any.{Any => ScalaPbAny}
 import com.google.protobuf.{ByteString => PbByteString}
 import io.cloudstate.protocol.value_entity.ValueEntityClient
 import io.cloudstate.proxy.entity.{EntityCommand, UserFunctionReply}
-import io.cloudstate.proxy.telemetry.AbstractTelemetrySpec
+import io.cloudstate.proxy.telemetry.{AbstractTelemetrySpec, CloudstateTelemetry, PrometheusEntityInstrumentation}
 import io.cloudstate.proxy.valueentity.store.Store.Key
 import io.cloudstate.proxy.valueentity.store.Store.Value
 import io.cloudstate.proxy.valueentity.store.{RepositoryImpl, Store}
 import io.cloudstate.testkit.TestService
 import io.cloudstate.testkit.valueentity.ValueEntityMessages
+import io.prometheus.client.CollectorRegistry
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -55,11 +56,16 @@ class DatabaseExceptionHandlingSpec extends AbstractTelemetrySpec {
 
   "ValueEntity" should {
 
-    "crash entity on init when loading state failures" in withTestKit(testkitConfig) { testKit =>
+    "crash entity on init when loading state failures" in withTestRegistry(testkitConfig) { testKit =>
       import testKit._
       import system.dispatcher
+      import PrometheusEntityInstrumentation.MetricLabel._
+      import PrometheusEntityInstrumentation.MetricName._
 
       silentDeadLettersAndUnhandledMessages
+
+      // simulate user function interaction with value-based entity to validate instrumentation
+      implicit val registry: CollectorRegistry = CloudstateTelemetry(system).prometheusRegistry
 
       val client =
         ValueEntityClient(GrpcClientSettings.connectToServiceAt("localhost", service.port).withTls(false))
@@ -68,14 +74,23 @@ class DatabaseExceptionHandlingSpec extends AbstractTelemetrySpec {
 
       val connection = service.valueEntity.expectConnection()
       connection.expectClosed()
+
+      metricValue(RecoveryFailedTotal, EntityName -> "test") shouldBe 1
+      metricValue(RecoveryTimeSeconds + "_count", EntityName -> "test") shouldBe 1
+      metricValue(RecoveryTimeSeconds + "_sum", EntityName -> "test") should be > 0.0
     }
 
-    "crash entity on update state failures" in withTestKit(testkitConfig) { testKit =>
+    "crash entity on update state failures" in withTestRegistry(testkitConfig) { testKit =>
       import ValueEntityMessages._
       import testKit._
       import system.dispatcher
+      import PrometheusEntityInstrumentation.MetricLabel._
+      import PrometheusEntityInstrumentation.MetricName._
 
       silentDeadLettersAndUnhandledMessages
+
+      // simulate user function interaction with value-based entity to validate instrumentation
+      implicit val registry: CollectorRegistry = CloudstateTelemetry(system).prometheusRegistry
 
       val forwardReply = forwardReplyActor(testActor)
 
@@ -94,14 +109,23 @@ class DatabaseExceptionHandlingSpec extends AbstractTelemetrySpec {
       connection.send(reply(1, EmptyJavaMessage, update(state)))
       expectMsg(UserFunctionReply(clientActionFailure("Unexpected Value entity failure")))
       connection.expectClosed()
+
+      metricValue(PersistFailedTotal, EntityName -> "test") shouldBe 1
+      metricValue(PersistTimeSeconds + "_count", EntityName -> "test") shouldBe 1
+      metricValue(PersistTimeSeconds + "_sum", EntityName -> "test") should be > 0.0
     }
 
-    "crash entity on delete state failures" in withTestKit(testkitConfig) { testKit =>
+    "crash entity on delete state failures" in withTestRegistry(testkitConfig) { testKit =>
       import ValueEntityMessages._
       import testKit._
       import system.dispatcher
+      import PrometheusEntityInstrumentation.MetricLabel._
+      import PrometheusEntityInstrumentation.MetricName._
 
       silentDeadLettersAndUnhandledMessages
+
+      // simulate user function interaction with value-based entity to validate instrumentation
+      implicit val registry: CollectorRegistry = CloudstateTelemetry(system).prometheusRegistry
 
       val forwardReply = forwardReplyActor(testActor)
 
@@ -125,6 +149,10 @@ class DatabaseExceptionHandlingSpec extends AbstractTelemetrySpec {
       expectMsg(UserFunctionReply(clientActionFailure("Unexpected Value entity failure")))
 
       connection.expectClosed()
+
+      metricValue(DeleteFailedTotal, EntityName -> "test") shouldBe 1
+      metricValue(DeleteTimeSeconds + "_count", EntityName -> "test") shouldBe 1
+      metricValue(DeleteTimeSeconds + "_sum", EntityName -> "test") should be > 0.0
     }
   }
 
@@ -158,7 +186,6 @@ class DatabaseExceptionHandlingSpec extends AbstractTelemetrySpec {
   private object TestJdbcStore {
 
     private object JdbcStoreStatus {
-      val normal = "normal"
       val getFailure = "GetFailure"
       val updateFailure = "UpdateFailure"
       val deleteFailure = "DeleteFailure"
@@ -177,7 +204,7 @@ class DatabaseExceptionHandlingSpec extends AbstractTelemetrySpec {
     system.eventStream.publish(Mute(EventFilter.warning(pattern = ".*unhandled message.*")))
   }
 
-  private def forwardReplyActor(actor: ActorRef)(implicit system: ActorSystem) =
+  private def forwardReplyActor(actor: ActorRef)(implicit system: ActorSystem): TestActorRef[Actor] =
     TestActorRef(new Actor {
       def receive: Receive = {
         case message =>

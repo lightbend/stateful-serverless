@@ -35,7 +35,7 @@ class EntityPassivateSpec extends AbstractTelemetrySpec {
 
   "ValueEntity" should {
 
-    "access the state after passivation" in withTestKit(
+    "access the state after passivation" in withTestRegistry(
       """
         | include "test-in-memory"
         | akka {
@@ -88,14 +88,12 @@ class EntityPassivateSpec extends AbstractTelemetrySpec {
       connection.expectClosed()
       expectTerminated(entity)
 
-      // recreate the entity
-      eventually(timeout(5.seconds), interval(100.millis)) {
-        val recreatedEntity =
-          system.actorOf(ValueEntitySupervisor.props(client, entityConfiguration, repository), "entity")
-        val connection2 = service.valueEntity.expectConnection()
-        connection2.expect(init("service", "entity", state(entityState)))
-        connection2.close()
-      }
+      // reactivate the entity
+      val reactivatedEntity =
+        system.actorOf(ValueEntitySupervisor.props(client, entityConfiguration, repository), "entity")
+      val connection2 = service.valueEntity.expectConnection()
+      connection2.expect(init("service", "entity", state(entityState)))
+      connection2.close()
     }
 
   }

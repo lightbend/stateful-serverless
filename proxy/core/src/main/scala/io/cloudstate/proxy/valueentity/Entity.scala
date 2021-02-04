@@ -29,6 +29,7 @@ import akka.util.Timeout
 import io.cloudstate.protocol.entity._
 import io.cloudstate.protocol.value_entity._
 import io.cloudstate.proxy.entity.{EntityCommand, UserFunctionReply}
+import io.cloudstate.proxy.telemetry.CloudstateTelemetry
 import io.cloudstate.proxy.valueentity.store.Repository
 import io.cloudstate.proxy.valueentity.store.Store.Key
 
@@ -212,18 +213,26 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
     with Stash
     with ActorLogging {
 
+  import io.cloudstate.proxy.telemetry.EntityInstrumentation.StashContext
+
   private implicit val ec = context.dispatcher
 
   private val persistenceId: String = configuration.userFunctionName + entityId
 
   private val actorId = ValueEntity.actorCounter.incrementAndGet()
 
-  private[this] final var stashedCommands = Queue.empty[(EntityCommand, ActorRef)] // PERFORMANCE: look at options for data structures
+  private[this] final var stashedCommands = Queue.empty[(EntityCommand, ActorRef, StashContext)] // PERFORMANCE: look at options for data structures
   private[this] final var currentCommand: ValueEntity.OutstandingCommand = null
   private[this] final var stopped = false
   private[this] final var idCounter = 0L
   private[this] final var inited = false
   private[this] final var commandStartTime = 0L
+
+  private[this] val instrumentation =
+    CloudstateTelemetry(context.system).valueBasedInstrumentation(configuration.userFunctionName)
+
+  instrumentation.entityActivated()
+  instrumentation.recoveryStarted()
 
   // Set up passivation timer
   context.setReceiveTimeout(configuration.passivationTimeout.duration)
@@ -232,6 +241,9 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
     repository
       .get(Key(persistenceId, entityId))
       .map { state =>
+        instrumentation.recoveryCompleted()
+        state.map(s => instrumentation.stateLoaded(s.serializedSize))
+
         if (!inited) {
           relay ! ValueEntityStreamIn(
             ValueEntityStreamIn.Message.Init(
@@ -248,20 +260,27 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
         }
       }
       .recover {
-        case error => ValueEntity.ReadStateFailure(error)
+        case error =>
+          instrumentation.recoveryFailed()
+          instrumentation.recoveryCompleted()
+          ValueEntity.ReadStateFailure(error)
       }
       .pipeTo(self)
 
-  override final def postStop(): Unit =
+  override final def postStop(): Unit = {
     if (currentCommand != null) {
       log.warning("Stopped but we have a current action id {}", currentCommand.actionId)
     }
+    instrumentation.entityPassivated()
+  }
 
   private[this] final def commandHandled(): Unit = {
     currentCommand = null
+    instrumentation.commandCompleted()
     if (stashedCommands.nonEmpty) {
-      val ((request, sender), newStashedCommands) = stashedCommands.dequeue
+      val ((request, sender, stashContext), newStashedCommands) = stashedCommands.dequeue
       stashedCommands = newStashedCommands
+      instrumentation.commandUnstashed(stashContext)
       handleCommand(request, sender)
     } else if (stopped) {
       context.stop(self)
@@ -269,13 +288,14 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
   }
 
   private[this] final def notifyOutstandingRequests(msg: String): Unit = {
+    instrumentation.entityFailed()
     currentCommand match {
       case null =>
       case req => req.replyTo ! createFailure(msg)
     }
     val errorNotification = createFailure("Value entity terminated")
     stashedCommands.foreach {
-      case (_, replyTo) => replyTo ! errorNotification
+      case (_, replyTo, _) => replyTo ! errorNotification
     }
   }
 
@@ -286,6 +306,7 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
   }
 
   private[this] final def handleCommand(entityCommand: EntityCommand, sender: ActorRef): Unit = {
+    instrumentation.commandStarted()
     idCounter += 1
     val command = Command(
       entityId = entityId,
@@ -326,9 +347,11 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
   private def running: Receive = {
 
     case command: EntityCommand if currentCommand != null =>
-      stashedCommands = stashedCommands.enqueue((command, sender()))
+      stashedCommands = stashedCommands.enqueue((command, sender(), instrumentation.commandStashed()))
 
     case command: EntityCommand =>
+      log.debug("Value entity [{}] [{}] received command [{}]", configuration.serviceName, entityId, command.name)
+      instrumentation.commandReceived()
       handleCommand(command, sender())
 
     case ValueEntityStreamOut(m, _) =>
@@ -343,6 +366,13 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
                 s"(expected id ${currentCommand.commandId} but got ${r.commandId}) - $r")
 
         case ValueEntitySOMsg.Reply(r) =>
+          instrumentation.commandProcessed()
+          r.clientAction match {
+            case Some(ClientAction(ClientAction.Action.Failure(_), _)) =>
+              instrumentation.commandFailed()
+            case _ =>
+          }
+
           val commandId = currentCommand.commandId
           if (r.stateAction.isEmpty) {
             currentCommand.replyTo ! valueEntityReplyToUfReply(r)
@@ -371,6 +401,9 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
                 s"(expected id ${currentCommand.commandId} but got ${f.commandId}) - ${f.description}")
 
         case ValueEntitySOMsg.Failure(f) =>
+          instrumentation.commandFailed()
+          instrumentation.commandProcessed()
+          instrumentation.commandCompleted()
           try crash("Unexpected Value entity failure", f.description)
           finally currentCommand = null // clear command after notifications
 
@@ -412,25 +445,36 @@ final class ValueEntity(configuration: ValueEntity.Configuration,
 
     action.action match {
       case Update(ValueEntityUpdate(Some(value), _)) =>
+        instrumentation.persistStarted()
+        instrumentation.statePersisted(value.serializedSize)
         repository
           .update(Key(persistenceId, entityId), value)
           .map { _ =>
+            instrumentation.persistCompleted()
             handler()
             ValueEntity.WriteStateSuccess
           }
           .recover {
-            case error => ValueEntity.WriteStateFailure(error)
+            case error =>
+              instrumentation.persistFailed()
+              instrumentation.persistCompleted()
+              ValueEntity.WriteStateFailure(error)
           }
 
       case Delete(_) =>
+        instrumentation.deleteStarted()
         repository
           .delete(Key(persistenceId, entityId))
           .map { _ =>
+            instrumentation.deleteCompleted()
             handler()
             ValueEntity.WriteStateSuccess
           }
           .recover {
-            case error => ValueEntity.WriteStateFailure(error)
+            case error =>
+              instrumentation.deleteFailed()
+              instrumentation.deleteCompleted()
+              ValueEntity.WriteStateFailure(error)
           }
     }
   }

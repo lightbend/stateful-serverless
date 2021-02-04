@@ -56,9 +56,17 @@ final class CloudstateTelemetry(system: ActorSystem) extends Extension {
     if (settings.enabled) new PrometheusEventSourcedInstrumentation(prometheusRegistry)
     else NoEventSourcedInstrumentation
 
+  val valueBasedInstrumentation: EntityInstrumentation =
+    if (settings.enabled) new PrometheusEntityInstrumentation(prometheusRegistry)
+    else NoEntityInstrumentation
+
   def eventSourcedEntityInstrumentation(entityName: String): EventSourcedEntityInstrumentation =
     if (settings.enabled) new ActiveEventSourcedEntityInstrumentation(entityName, eventSourcedInstrumentation)
     else NoEventSourcedEntityInstrumentation
+
+  def valueBasedInstrumentation(entityName: String): ValueEntityInstrumentation =
+    if (settings.enabled) new ActiveValueEntityInstrumentation(entityName, valueBasedInstrumentation)
+    else NoValueEntityInstrumentation
 
   def start(): Unit =
     if (settings.enabled) {

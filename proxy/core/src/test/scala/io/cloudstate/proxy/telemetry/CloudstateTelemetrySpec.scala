@@ -69,7 +69,7 @@ class CloudstateTelemetrySpec extends AbstractTelemetrySpec {
         CloudstateTelemetry(system).start()
       }
       val metrics = scrape("http://localhost:9090")(_.mkString)
-      metrics should include("# TYPE cloudstate_eventsourced")
+      metrics should (include("# TYPE cloudstate_eventsourced") and include("# TYPE cloudstate_valuebased"))
     }
 
     "allow Prometheus metrics port to be configured" in withTestRegistry(
@@ -83,7 +83,7 @@ class CloudstateTelemetrySpec extends AbstractTelemetrySpec {
         CloudstateTelemetry(system).start()
       }
       val metrics = scrape("http://localhost:9999")(_.mkString)
-      metrics should include("# TYPE cloudstate_eventsourced")
+      metrics should (include("# TYPE cloudstate_eventsourced") and include("# TYPE cloudstate_valuebased"))
     }
 
     "bind event-sourced instrumentation to Prometheus by default" in withTestRegistry() { testKit =>
@@ -108,6 +108,30 @@ class CloudstateTelemetrySpec extends AbstractTelemetrySpec {
     ) { testKit =>
       CloudstateTelemetry(testKit.system)
         .eventSourcedEntityInstrumentation("name") should be theSameInstanceAs NoEventSourcedEntityInstrumentation
+    }
+
+    "bind value-based instrumentation to Prometheus by default" in withTestRegistry() { testKit =>
+      CloudstateTelemetry(testKit.system).valueBasedInstrumentation shouldBe a[PrometheusEntityInstrumentation]
+    }
+
+    "use noop value-based instrumentation when disabled" in withTestKit("""
+      | cloudstate.proxy.telemetry.disabled = true
+      """) { testKit =>
+      CloudstateTelemetry(testKit.system).valueBasedInstrumentation should be theSameInstanceAs NoEntityInstrumentation
+    }
+
+    "bind active value-based entity instrumentation by default" in withTestRegistry() { testKit =>
+      CloudstateTelemetry(testKit.system)
+        .valueBasedInstrumentation("name") shouldBe an[ActiveValueEntityInstrumentation]
+    }
+
+    "use noop value-based entity instrumentation when disabled" in withTestKit(
+      """
+      | cloudstate.proxy.telemetry.disabled = true
+      """
+    ) { testKit =>
+      CloudstateTelemetry(testKit.system)
+        .valueBasedInstrumentation("name") should be theSameInstanceAs NoValueEntityInstrumentation
     }
   }
 }
