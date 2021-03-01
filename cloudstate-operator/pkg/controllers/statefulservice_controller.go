@@ -526,8 +526,9 @@ func (r *StatefulServiceReconciler) updateStatus(ctx context.Context, log logr.L
 			break
 		}
 	}
-	updated := reconciliation.ReconcileStatefulServiceConditions(service.Status.Conditions, conditions)
+	updated := reconciliation.ReconcileConditions(service.Status.Conditions, conditions)
 	if len(updated) == 0 &&
+		origStatus != nil &&
 		origStatus.Replicas == service.Status.Replicas &&
 		origStatus.Summary == service.Status.Summary &&
 		origStatus.Selector == service.Status.Selector {

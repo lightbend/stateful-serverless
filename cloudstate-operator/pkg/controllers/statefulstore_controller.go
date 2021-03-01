@@ -100,7 +100,7 @@ func (r *StatefulStoreReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		updated = true
 		store.Status.Summary = summary
 	}
-	updatedConditions := reconciliation.ReconcileStatefulServiceConditions(store.Status.Conditions, conditions)
+	updatedConditions := reconciliation.ReconcileConditions(store.Status.Conditions, conditions)
 	if len(updatedConditions) > 0 || updated {
 		if len(updatedConditions) > 0 {
 			store.Status.Conditions = updatedConditions
