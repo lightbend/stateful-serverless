@@ -36,7 +36,7 @@ service ValueEntity {
   // to the entity. The entity is expected to reply to each command with exactly one reply message.
   // The entity should process commands and reply to commands in the order they came
   // in. When processing a command the entity can read and persist (update or delete) the state.
-  rpc handle(stream ValueEntityStreamIn) returns (stream ValueEntityStreamOut) {}
+  rpc Handle(stream ValueEntityStreamIn) returns (stream ValueEntityStreamOut) {}
 }
 
 // Input message type for the gRPC stream in.

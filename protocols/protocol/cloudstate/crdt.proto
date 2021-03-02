@@ -59,7 +59,7 @@ service Crdt {
     //
     // The user function must respond with one reply per command in. They do not necessarily have to be sent in the same
     // order that the commands were sent, the command ID is used to correlate commands to replies.
-    rpc handle(stream CrdtStreamIn) returns (stream CrdtStreamOut);
+    rpc Handle(stream CrdtStreamIn) returns (stream CrdtStreamOut);
 }
 
 // Message for the Crdt handle stream in.

@@ -308,11 +308,11 @@ message ProxyInfo {
 service EntityDiscovery {
 
     // Discover what entities the user function wishes to serve.
-    rpc discover(ProxyInfo) returns (EntitySpec) {}
+    rpc Discover(ProxyInfo) returns (EntitySpec) {}
 
     // Report an error back to the user function. This will only be invoked to tell the user function
     // that it has done something wrong, eg, violated the protocol, tried to use an entity type that
     // isn't supported, or attempted to forward to an entity that doesn't exist, etc. These messages
     // should be logged clearly for debugging purposes.
-    rpc reportError(UserFunctionError) returns (google.protobuf.Empty) {}
+    rpc ReportError(UserFunctionError) returns (google.protobuf.Empty) {}
 }

@@ -66,7 +66,7 @@ service ActionProtocol {
     // The input command will contain the service name, command name, request metadata and the command
     // payload. The reply may contain a direct reply, a forward or a failure, and it may contain many
     // side effects.
-    rpc handleUnary(ActionCommand) returns (ActionResponse) {}
+    rpc HandleUnary(ActionCommand) returns (ActionResponse) {}
 
     // Handle a streamed in command.
     //
@@ -89,7 +89,7 @@ service ActionProtocol {
     //
     // Either the client or the server may cancel the stream at any time, cancellation is indicated
     // through an HTTP2 stream RST message.
-    rpc handleStreamedIn(stream ActionCommand) returns (ActionResponse) {}
+    rpc HandleStreamedIn(stream ActionCommand) returns (ActionResponse) {}
 
     // Handle a streamed out command.
     //
@@ -100,7 +100,7 @@ service ActionProtocol {
     //
     // Either the client or the server may cancel the stream at any time, cancellation is indicated
     // through an HTTP2 stream RST message.
-    rpc handleStreamedOut(ActionCommand) returns (stream ActionResponse) {}
+    rpc HandleStreamedOut(ActionCommand) returns (stream ActionResponse) {}
 
     // Handle a full duplex streamed command.
     //
@@ -127,6 +127,6 @@ service ActionProtocol {
     //
     // Either the client or the server may cancel the stream at any time, cancellation is indicated
     // through an HTTP2 stream RST message.
-    rpc handleStreamed(stream ActionCommand) returns (stream ActionResponse) {}
+    rpc HandleStreamed(stream ActionCommand) returns (stream ActionResponse) {}
 
 }

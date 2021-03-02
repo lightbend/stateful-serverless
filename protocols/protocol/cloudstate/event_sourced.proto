@@ -111,5 +111,5 @@ service EventSourced {
     // message. The entity should reply in order, and any events that the entity requests to be
     // persisted the entity should handle itself, applying them to its own state, as if they had
     // arrived as events when the event stream was being replayed on load.
-    rpc handle(stream EventSourcedStreamIn) returns (stream EventSourcedStreamOut) {}
+    rpc Handle(stream EventSourcedStreamIn) returns (stream EventSourcedStreamOut) {}
 }
