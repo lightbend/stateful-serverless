@@ -117,6 +117,7 @@ lazy val root = (project in file("."))
   .aggregate(
     `protocols`,
     `proxy`,
+    `jvm-support`,
     `java-support`,
     `java-support-docs`,
     `java-support-tck`,
@@ -576,6 +577,72 @@ lazy val operator = (project in file("operator"))
         streams.value
       )
     }
+  )
+
+lazy val `jvm-support` = (project in file("jvm-support"))
+  .enablePlugins(AkkaGrpcPlugin, BuildInfoPlugin)
+  .dependsOn(testkit % Test)
+  .settings(
+    name := "cloudstate-jvm-support",
+    dynverTagPrefix := "jvm-support-",
+    common,
+    crossPaths := false,
+    publishMavenStyle := true,
+    bintrayPackage := name.value,
+    buildInfoKeys := Seq[BuildInfoKey](name, version),
+    buildInfoPackage := "io.cloudstate.jvmsupport",
+    // Generate javadocs by just including non generated Java sources
+    sourceDirectories in (Compile, doc) := Seq((javaSource in Compile).value),
+    sources in (Compile, doc) := {
+      val javaSourceDir = (javaSource in Compile).value.getAbsolutePath
+      (sources in (Compile, doc)).value.filter(_.getAbsolutePath.startsWith(javaSourceDir))
+    },
+    // javadoc (I think java 9 onwards) refuses to compile javadocs if it can't compile the entire source path.
+    // but since we have java files depending on Scala files, we need to include ourselves on the classpath.
+    dependencyClasspath in (Compile, doc) := (fullClasspath in Compile).value,
+    javacOptions in (Compile, doc) ++= Seq(
+        "-overview",
+        ((javaSource in Compile).value / "overview.html").getAbsolutePath,
+        "-notimestamp",
+        "-doctitle",
+        "Cloudstate Java Support"
+      ),
+    libraryDependencies ++= Seq(
+        akkaDependency("akka-stream"),
+        akkaDependency("akka-slf4j"),
+        akkaDependency("akka-discovery"),
+        akkaHttpDependency("akka-http"),
+        akkaHttpDependency("akka-http-spray-json"),
+        akkaHttpDependency("akka-http-core"),
+        akkaHttpDependency("akka-http2-support"),
+        "com.google.protobuf" % "protobuf-java" % ProtobufVersion % "protobuf",
+        "com.google.protobuf" % "protobuf-java-util" % ProtobufVersion,
+        "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,
+        akkaDependency("akka-testkit") % Test,
+        akkaDependency("akka-stream-testkit") % Test,
+        akkaHttpDependency("akka-http-testkit") % Test,
+        "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
+        "org.slf4j" % "slf4j-simple" % "1.7.26",
+        "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.9.3"
+      ),
+    javacOptions in Compile ++= Seq("-encoding", "UTF-8"),
+    javacOptions in (Compile, compile) ++= Seq("-source", "1.8", "-target", "1.8"),
+    akkaGrpcGeneratedSources in Compile := Seq(AkkaGrpc.Server),
+    akkaGrpcGeneratedLanguages in Compile := Seq(AkkaGrpc.Scala), // FIXME should be Java, but here be dragons
+    PB.protoSources in Compile ++= {
+      val baseDir = (baseDirectory in ThisBuild).value / "protocols"
+      Seq(baseDir / "protocol", baseDir / "frontend")
+    },
+    // We need to generate the java files for things like entity_key.proto so that downstream libraries can use them
+    // without needing to generate them themselves
+    PB.targets in Compile += PB.gens.java -> crossTarget.value / "akka-grpc" / "main",
+    inConfig(Test)(
+      Seq(
+        akkaGrpcGeneratedSources := Seq(AkkaGrpc.Client),
+        PB.protoSources += (baseDirectory in ThisBuild).value / "protocols" / "example",
+        PB.targets += PB.gens.java -> crossTarget.value / "akka-grpc" / "test"
+      )
+    )
   )
 
 lazy val `java-support` = (project in file("java-support"))
