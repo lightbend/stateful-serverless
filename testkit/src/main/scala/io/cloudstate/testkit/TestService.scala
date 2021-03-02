@@ -43,11 +43,9 @@ final class TestService {
   import context.system
 
   Await.result(
-    Http().bindAndHandleAsync(
-      handler = entityDiscovery.handler orElse eventSourced.handler orElse valueEntity.handler,
-      interface = "localhost",
-      port = port
-    ),
+    Http()
+      .newServerAt("localhost", port)
+      .bind(entityDiscovery.handler orElse eventSourced.handler orElse valueEntity.handler),
     10.seconds
   )
 

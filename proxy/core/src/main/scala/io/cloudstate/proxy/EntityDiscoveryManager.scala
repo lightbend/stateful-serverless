@@ -261,11 +261,9 @@ class EntityDiscoveryManager(config: EntityDiscoveryManager.Configuration)(
 
         // Don't actually bind until we have a cluster
         Cluster(context.system).registerOnMemberUp {
-          Http().bindAndHandleAsync(
-            handler = route,
-            interface = config.httpInterface,
-            port = config.httpPort
-          ) pipeTo self
+          Http()
+            .newServerAt(config.httpInterface, config.httpPort)
+            .bind(route) pipeTo self
 
           EventingManager.startConsumers(router, entities, topicSupport, eventLogEventing, projectionSupport)
         }

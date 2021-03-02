@@ -42,7 +42,7 @@ val GrpcJavaVersion = "1.30.2" // Note: sync with gRPC version in Akka gRPC
 val GrpcNettyShadedVersion = "1.28.1"
 val GraalAkkaVersion = "0.5.0"
 val AkkaVersion = "2.6.9"
-val AkkaHttpVersion = "10.1.12" // Note: sync with Akka HTTP version in Akka gRPC
+val AkkaHttpVersion = "10.2.3" // Note: should be newer than Akka HTTP version in Akka gRPC
 val AkkaManagementVersion = "1.0.8"
 val AkkaPersistenceCassandraVersion = "0.102"
 val AkkaPersistenceJdbcVersion = "3.5.2"
@@ -784,6 +784,7 @@ lazy val `testkit` = (project in file("testkit"))
     buildInfoPackage := "io.cloudstate.testkit",
     libraryDependencies ++= Seq(
         akkaDependency("akka-stream-testkit"),
+        "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
         "com.google.protobuf" % "protobuf-java" % ProtobufVersion % "protobuf",
         "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
       ),
@@ -802,6 +803,7 @@ lazy val `tck` = (project in file("tck"))
         akkaDependency("akka-stream"),
         akkaDependency("akka-discovery"),
         akkaHttpDependency("akka-http"),
+        akkaHttpDependency("akka-http2-support"),
         akkaHttpDependency("akka-http-spray-json"),
         "com.google.protobuf" % "protobuf-java" % ProtobufVersion % "protobuf",
         "org.scalatest" %% "scalatest" % ScalaTestVersion,
