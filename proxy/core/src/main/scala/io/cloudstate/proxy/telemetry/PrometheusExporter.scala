@@ -56,7 +56,7 @@ class PrometheusExporter(registry: CollectorRegistry, metricsHost: String, metri
 
   def start(): Unit = {
     import system.dispatcher
-    Http().bindAndHandle(routes, metricsHost, metricsPort).onComplete {
+    Http().newServerAt(metricsHost, metricsPort).bind(routes).onComplete {
       case Success(binding) =>
         system.log.info("Prometheus exporter started on {}", binding.localAddress)
       case Failure(error) =>

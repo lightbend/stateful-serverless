@@ -2,7 +2,7 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.7.4")
 
 addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.1.1")
 
-addSbtPlugin("com.lightbend.akka.grpc" % "sbt-akka-grpc" % "1.0.1") // When updating, also update GrpcJavaVersion in build.sbt to be in sync
+addSbtPlugin("com.lightbend.akka.grpc" % "sbt-akka-grpc" % "1.1.0-M2") // When updating, also update GrpcJavaVersion in build.sbt to be in sync
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.15.0")
 

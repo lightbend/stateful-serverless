@@ -47,15 +47,15 @@ final class InterceptService(settings: InterceptorSettings) {
     import context.system
     entityDiscovery.expectOnline(60.seconds)
     Await.result(
-      Http().bindAndHandleAsync(
-        handler = entityDiscovery.handler
+      Http()
+        .newServerAt(settings.bind.host, settings.bind.port)
+        .bind(
+          entityDiscovery.handler
           orElse action.handler
           orElse valueEntity.handler
           orElse eventSourcedEntity.handler
-          orElse crdtEntity.handler,
-        interface = settings.bind.host,
-        port = settings.bind.port
-      ),
+          orElse crdtEntity.handler
+        ),
       10.seconds
     )
   }
