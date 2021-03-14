@@ -8,7 +8,7 @@ const fs = require("fs");
 const rimraf = require("rimraf");
 
 const downloadUrlPrefix = "https://github.com/protocolbuffers/protobuf/releases/download/v";
-const protocVersion = "3.8.0";
+const protocVersion = "3.15.6";
 function makeDownloadFile(platformArch) {
   return "protoc-" + protocVersion + "-" + platformArch + ".zip";
 }
